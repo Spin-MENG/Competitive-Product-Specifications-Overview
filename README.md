@@ -19,6 +19,17 @@
 
 ---
 
+## 前置依赖
+
+本 plugin 的 Step 6（HTML 报告生成）**强依赖** `data-team-skills:html-report` skill（GL.iNet 数据组内部）。
+
+**为什么**：我们不在这里维护一份 HTML 模板 fork —— 配色 / 字体 / 组件类名 / ECharts 工厂函数全部由 html-report skill owner 集中维护，避免分叉。本 plugin 把 Step 1-5 的数据打包成 section brief，委托 html-report 完成最后一公里渲染。
+
+**如何获取 html-report**：
+
+- GL.iNet 数据组同事：装 `data-team-skills` plugin（含 html-report 等 5 个 skill）
+- 外部用户：fork 本 repo，把 SKILL.md / workflow.md 里 "委托 html-report" 部分替换为你自己的 HTML 模板路径，或参考 [GL.iNet 数据组 html-report skill 设计系统](#致谢)（黄昏绮景 7 色 + ECharts v5）自建
+
 ## 安装方式
 
 ### 选项 1 · marketplace（推荐）
@@ -41,7 +52,7 @@ claude plugin install competitive-product-specs
 git clone https://github.com/Spin-MENG/Competitive-Product-Specifications-Overview.git ~/.claude/plugins/competitive-product-specs
 ```
 
-重启 Claude Code 即可生效。
+重启 Claude Code 即可生效。**确保已先装 data-team-skills 或等效 html-report skill。**
 
 ---
 
@@ -175,14 +186,16 @@ U12_spec_inventory_top<N>.html
 ```
 .
 ├── README.md                                          # 你正在读的这个文件
+├── LICENSE                                            # MIT
 ├── .claude-plugin/
 │   └── marketplace.json                               # Plugin 元数据
 └── skills/
     └── spec-inventory/
         ├── SKILL.md                                   # Skill 主入口
         ├── assets/
-        │   ├── html-template.html                     # 黄昏绮景骨架
         │   └── csv-schema.md                          # 公共 CSV 字段定义
+        │                                              # （HTML 模板委托 data-team-skills:html-report,
+        │                                              #  不在本 plugin 维护 fork）
         ├── configs/
         │   ├── router.yaml                            # 路由器品类（最完整）
         │   ├── kitchen.yaml                           # 厨具品类（骨架）

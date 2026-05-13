@@ -21,7 +21,7 @@ description: 竞品规格盘点流水线 —— 给定 CSV 种子或 ASIN 列表
 
 2. **子 agent 输出必须有真实 URL**：并行 research agent 的产出**必须包含 ≥1 个真实可访问的 source URL**（厂商官网 / FCC database / 评测站等）；agent 若声明"无法联网"或全部字段都是推测，**降级标"未公开"**，不接受瞎填。详见 [`references/agent-prompt.md`](references/agent-prompt.md)。
 
-3. **黄昏绮景配色 + ECharts v5**：HTML 报告复用 `assets/html-template.html` 骨架，配色 / 字体 / 组件类名不修改；图表色从全局 `C` 对象取，无硬编码 HEX。
+3. **HTML 输出统一调用 `data-team-skills:html-report` skill**：本 plugin **不自维护** HTML 模板 fork，所有报告生成必须委托给 html-report skill（黄昏绮景 7 色 + ECharts v5 + Plus Jakarta Sans/Noto Sans SC + 4 section 结构）。这样 html-report 升级时本 plugin 自动受益，避免模板分叉。
 
 4. **按品类 schema 驱动**：字段定义来自 `configs/<category>.yaml`，不要在 skill 主流程里硬编码"路由器有 chipset 字段"。
 
@@ -90,16 +90,29 @@ viz:
 
 按 schema 字段顺序合并所有 agent 输出到 `spec_matrix_<category>_top<N>_<date>.csv`。CSV 是后续 U21 价格分布 / U22 主报告整合的输入。
 
-### Step 6 · 生成黄昏绮景 HTML 报告
+### Step 6 · 委托 html-report skill 生成 HTML 报告
 
-复制 `assets/html-template.html`，按 4 section 填充：
+**不要在本 skill 内自己写 HTML 骨架**。把 Step 1-5 准备好的数据打包成 section brief，通过 `Skill` 工具调用 `data-team-skills:html-report`，让它用自己的 `assets/template.html` + 工厂函数 `C` / `tooltipStyle()` / `axisStyle()` / `lerpColor()` 渲染。
 
-1. **概览** · ad-kpi-grid（SKU 数 / 类别拆分 / 价格区间 / 代际覆盖）+ orange warning insight 交代 anchor_explicit / anchor_open
-2. **代际与形态分布** · 4 张 ECharts 图（协议 donut / 形态 donut / 频段 bar / chipset donut）
-3. **价格 × 代际散点 + 完整规格矩阵** · scatter + `.asin-tbl` 表
-4. **结论与建议** · `.summary-grid` 双列 + glossary 字段空白说明
+**handoff 时给 html-report skill 的输入清单**（一句话 brief + 数据文件路径）：
 
-**HTML 内 anchor 规则**（强制）：
+| 输入 | 内容 |
+|---|---|
+| 报告标题 | `<品类> 主流竞品 Top <N> 规格盘点` |
+| 数据来源 | CSV / 厂商官网 / FCC database / 评测站 |
+| 章节结构 | 4 section：概览 → 代际+形态分布 → 价格×代际散点+规格矩阵 → 结论与建议 |
+| 数据文件 | `spec_matrix_<category>_top<N>_<date>.csv`（Step 5 产物）|
+| anchor 信息 | `anchor_explicit` 字典 + `anchor_open` 列表（Step 1 提取） |
+| 图表清单 | 4 张分布图（donut/donut/bar/donut）+ 1 张散点图（含新品锚点）|
+
+**4 个章节的内容由本 skill 准备**（html-report 负责套模板）：
+
+1. **概览** · 4 个 ad-kpi-card（SKU 数 / 类别拆分 / 价格区间 / 代际覆盖）+ orange warning insight 交代 anchor_explicit / anchor_open
+2. **代际与形态分布** · 4 张 ECharts 图（协议 donut / 形态 donut / 频段 bar / chipset donut）+ teal insight 观察
+3. **价格 × 代际散点 + 完整规格矩阵** · scatter + `.asin-tbl` 表 + orange warning 解读
+4. **结论与建议** · `.summary-grid` 双列（左 = 客观结论 / 右 = 分析师建议 + disclaimer）+ glossary 字段空白说明
+
+**HTML 内 anchor 规则**（强制 · 在传给 html-report 的 brief 中明示）：
 - 新品的散点 / 雷达只在 `anchor_explicit` 维度放点
 - `anchor_open` 维度的图禁止画新品占位（避免预设）
 - 章节底部 warning insight 明确列出"PPT 明示项"和"PPT 待探讨项"两份清单
@@ -138,8 +151,8 @@ viz:
 skills/spec-inventory/
 ├── SKILL.md                          # 你正在读的这个文件
 ├── assets/
-│   ├── html-template.html            # 黄昏绮景骨架（Step 6 读这个）
-│   └── csv-schema.md                 # 公共字段定义
+│   └── csv-schema.md                 # 公共 CSV 字段定义
+│                                     # （HTML 模板委托 data-team-skills:html-report，本目录不存 HTML fork）
 ├── configs/
 │   ├── router.yaml                   # 路由器品类（含 MeshNode 项目沉淀的字段）
 │   ├── kitchen.yaml                  # 厨具品类（最小骨架，按需扩展）
@@ -149,6 +162,11 @@ skills/spec-inventory/
     ├── anchor-isolation.md           # 明示项 vs 待探讨项 隔离规则
     └── agent-prompt.md               # 子 agent prompt 模板 + 校验
 ```
+
+## 依赖
+
+本 plugin **强依赖** `data-team-skills:html-report` skill（GL.iNet 数据组内部）。
+请先安装 data-team-skills plugin，否则 Step 6 无法完成。详见 [README.md](../../README.md) 安装章节。
 
 ## 参考来源
 

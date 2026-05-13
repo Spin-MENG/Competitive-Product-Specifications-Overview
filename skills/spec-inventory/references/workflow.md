@@ -168,57 +168,101 @@ CSV 4 个 + 目标 12 个 → 需补 8 个。
 
 ---
 
-## Step 6 · 生成黄昏绮景 HTML 报告
+## Step 6 · 委托 html-report skill 生成 HTML 报告
 
-### 6.1 读 html-template.html 骨架
+**核心原则**：本 plugin **不自维护** HTML 模板，统一委托给 `data-team-skills:html-report` skill。这样模板升级、配色调整、组件扩展由 html-report skill owner 集中维护，本 plugin 自动受益。
 
-```bash
-# 复制 assets/html-template.html → 目标路径
-# 不要从零写 HTML
+### 6.1 准备 section brief
+
+把 Step 1-5 沉淀的数据打包成一份 brief，供 html-report skill 渲染。Brief 是一个内存数据结构（也可落到 markdown 文件方便 html-report 读取）：
+
+```yaml
+report_title: "<品类> 主流竞品 Top <N> 规格盘点 — <项目名> (Ticket <编号>)"
+project_badge: "<组织> · <工作单元>"
+meta:
+  ticket: "<编号> · <slug>"
+  data_date: "<YYYY-MM-DD>"
+  market: "<EU 5 站点 / US / CN / ...>"
+  work_unit: "U12 · 规格盘点"
+
+sections:
+  overview:                 # Section 1
+    kpi_cards: [...]        # 4 个 ad-kpi-card 数据
+    anchor_explicit: {...}  # PPT 明示项
+    anchor_open: [...]      # PPT 待探讨项
+    insight_type: warning   # 用 .insight.warning 框
+
+  distribution:             # Section 2
+    charts:
+      - id: proto, type: donut, data: [...], title: "WiFi 协议代际分布"
+      - id: form,  type: donut, data: [...], title: "产品形态分布"
+      - id: band,  type: bar,   data: [...], title: "频段配置分布"
+      - id: chipset, type: donut, data: [...], title: "Chipset 阵营"
+    insight: "..."
+
+  pricing_matrix:           # Section 3
+    scatter:
+      mesh_data: [...]
+      repeater_data: [...]
+      anchor_data: [...]    # **遵守 anchor isolation 规则**
+    table:
+      headers: [...]
+      rows: [...]
+    insight: "..."
+
+  summary:                  # Section 4
+    findings: [...]         # 左列：客观结论
+    recommendations: [...]  # 右列：建议（带 disclaimer banner）
+    field_gaps: [...]       # glossary 列表
+
+footer_sources: "..."
+output_path: "<编号>_<slug>/<编号>_<slug>/U12_spec_inventory_top<N>.html"
 ```
 
-### 6.2 替换占位符
+### 6.2 调用 html-report skill
 
-模板里有这些占位符（用 Edit 工具替换）：
+通过 Skill 工具切换到 html-report 上下文，让它执行自己的 Step 1-6（读 template.html → 套 brief 数据 → 落盘）：
 
-| 占位符 | 替换内容 |
-|---|---|
-| `{{REPORT_TITLE}}` | 完整报告标题 |
-| `{{PROJECT_BADGE}}` | 项目编号 + 品类 |
-| `{{DATA_DATE}}` | YYYY-MM-DD |
-| `{{MARKET}}` | EU / US / CN |
-| `{{WORK_UNIT}}` | 如 U12 · 规格盘点 |
-| `{{KPI_CARDS}}` | 4 个 ad-kpi-card HTML 块（SKU 数 / 类别拆分 / 价格区间 / 代际覆盖）|
-| `{{ANCHOR_INSIGHT}}` | 黄色 warning insight，列出 anchor_explicit + anchor_open |
-| `{{DONUT_DATA_PROTO}}` | ECharts donut data 数组（协议代际） |
-| `{{DONUT_DATA_FORM}}` | 形态分布 data |
-| `{{BAR_DATA_BAND}}` | 频段配置 bar data |
-| `{{DONUT_DATA_CHIPSET}}` | chipset 阵营 data |
-| `{{SCATTER_MESH}}` | 散点图 Mesh 类数据 |
-| `{{SCATTER_REPEATER}}` | 散点图 Repeater 类数据 |
-| `{{SCATTER_ANCHOR}}` | 新品锚点（**只用 anchor_explicit**） |
-| `{{SPEC_TABLE_ROWS}}` | 12 行表格 HTML |
-| `{{SUMMARY_FINDINGS}}` | 左列：客观结论（基于硬数据） |
-| `{{SUMMARY_RECOMMENDATIONS}}` | 右列：分析师推论建议（带 disclaimer） |
-| `{{FIELD_GAPS}}` | glossary 字段空白说明 |
+```
+Skill(skill: "data-team-skills:html-report", args: "<brief 摘要 + brief 文件路径>")
+```
 
-### 6.3 强制 anchor 规则
+或者，如果 Skill 工具不可用 / 同事是手动 clone 方式安装，**fallback** 为：
 
-生成 `{{SCATTER_ANCHOR}}` 时**只允许使用 anchor_explicit 中的字段**。如果 anchor_explicit 只有 target_price，散点 x 轴用占位值（如 0.5 表示"待定"），并在 label 写 "（代际待定）"。
+```
+Read /Users/<user>/.claude/plugins/cache/data-team-skills/.../skills/html-report/assets/template.html
+→ 在主 conversation 内按 html-report 工作流套模板
+→ 输出到 output_path
+```
 
-雷达图维度若超过 anchor_explicit 字段数 → 干脆**不画新品锚点**，章节下方 insight 注明原因。
+两种路径都要把 brief 中的 anchor 规则透传过去：
+- 散点图新品锚点**只用 anchor_explicit** 字段
+- 雷达图 ≥ 2 维落在 anchor_open → 不画新品锚点
+- 推荐章节顶部加 orange disclaimer banner
+
+### 6.3 强制 anchor 规则（无论谁渲染都要遵守）
+
+详见 [anchor-isolation.md](anchor-isolation.md)：
+
+- 散点 x 轴若为 anchor_open 字段 → 用占位值 0.5 + label "（代际待定）"
+- 雷达若 ≥ 2 维落在 anchor_open → 不画新品锚点 + 章节下方 insight 注明
+- 推荐章节顶部 disclaimer：
+  ```
+  ⚠️ 本节是 U12 分析师推论建议，非 PPT 明示。
+  ```
 
 ### 6.4 浏览器验证
 
 ```bash
-open <html_path>
+open <output_path>
 ```
 
-让用户自己确认：
-- 图表是否正确渲染
+让用户确认：
+- 图表是否正确渲染（黄昏绮景配色 + ECharts）
 - 字体加载（Plus Jakarta Sans + Noto Sans SC）
 - 响应式（窄屏正常换行）
 - 数据是否对齐表格行数
+- anchor isolation 规则是否生效（新品在 anchor_open 字段是否未被预设）
 
 ---
 
