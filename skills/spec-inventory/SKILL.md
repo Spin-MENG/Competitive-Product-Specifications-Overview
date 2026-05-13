@@ -23,7 +23,7 @@ description: 竞品规格盘点流水线 —— 给定 CSV 种子或 ASIN 列表
 
 3. **HTML 输出统一调用 `data-team-skills:html-report` skill**：本 plugin **不自维护** HTML 模板 fork，所有报告生成必须委托给 html-report skill（黄昏绮景 7 色 + ECharts v5 + Plus Jakarta Sans/Noto Sans SC + 4 section 结构）。这样 html-report 升级时本 plugin 自动受益，避免模板分叉。
 
-4. **按品类 schema 驱动**：字段定义来自 `configs/<category>.yaml`，不要在 skill 主流程里硬编码"路由器有 chipset 字段"。
+4. **按品类 schema 驱动**：字段定义 + **雷达 6 维评分规则** 全部来自 `configs/<category>.yaml`，不要在 skill 主流程或 HTML 模板里硬编码"路由器有 chipset 字段"或"雷达画 WiFi 代际"。雷达评分规则支持 3 种类型：`enum`（枚举映射）/ `numeric_extract`（regex 抽数字 + scale）/ `percentile`（盘点内百分位 1-5），详见 [`references/workflow.md`](references/workflow.md) Step 5.5。
 
 ## 触发与不触发
 
@@ -89,6 +89,12 @@ viz:
 ### Step 5 · 合并 → CSV
 
 按 schema 字段顺序合并所有 agent 输出到 `spec_matrix_<category>_top<N>_<date>.csv`。CSV 是后续 U21 价格分布 / U22 主报告整合的输入。
+
+### Step 5.5 · 雷达评分计算（schema-driven）
+
+读 `configs/<category>.yaml` 的 `viz.radar`，按 6 个 dim 配置（enum / numeric_extract / percentile）把 CSV 原始字段值映射到 1-5 整数分。按 `grouping_field`（如 router 的 `category` / kitchen 的 `subcategory`）分组，每组 ≥ `min_per_group` 才画。详见 [`references/workflow.md`](references/workflow.md) Step 5.5。
+
+**anchor isolation 在雷达图强制规则**：新品 6 维中至少 5 维必须在 `anchor_explicit` 才允许画占位锚点；否则**不画新品雷达系列**（MeshNode 这次 6 维中只有"性价比"有 PPT 依据，故不画）。
 
 ### Step 6 · 委托 html-report skill 生成 HTML 报告
 

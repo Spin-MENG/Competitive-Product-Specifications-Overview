@@ -122,20 +122,61 @@ U12_spec_inventory_top<N>.html
 
 - 14 个 required 字段：brand / model / wifi_protocol / phy_rate / band_config / mlo_support / mesh_protocol / wan_lan_ports / antenna / chipset_soc / ram_mb / flash_mb / coverage / form_factor / price
 - 视化：协议代际 donut / 形态 donut / 频段 bar / Chipset donut / 价格×代际 scatter / 6 维 radar
+- 雷达 6 维（schema-driven，YAML 可改）：WiFi 代际 / 频段数 / 端口速率 / 覆盖面积 / 性价比 / 生态开放度
 
 ### `configs/kitchen.yaml`（骨架示例）
 
 - 8 个 required 字段：brand / model / subcategory / capacity / power / control_type / temp_range / safety_cert / price
 - 适用：空气炸锅 / 料理机 / 电饭煲 / 净水器 / 咖啡机
+- 雷达 6 维：容量 / 功率 / 智能化 / 安全认证 / 性价比 / 静音度
 
 ### `configs/saas.yaml`（骨架示例）
 
 - 9 个 required 字段：brand / product_name / subcategory / deployment_model / pricing_tiers / api_availability / sso_support / data_residency / compliance
 - 适用：CRM / 数据分析 / 团队协作 / 客服系统
+- 雷达 6 维：集成生态 / 合规深度 / API 开放度 / 认证安全 / 性价比 / 部署灵活度
 
 ### 自定义品类
 
 复制 `configs/router.yaml` 改字段即可。结构对 Claude 透明，新加 YAML 自动可用。
+
+**雷达维度高度可配**——3 种评分规则类型即可覆盖绝大多数场景：
+
+| 规则类型 | 适用 | 例 |
+|---|---|---|
+| `enum` | 字段是离散枚举（含 `match_mode: contains` 处理含子串场景） | WiFi 协议 / 控制方式 / Mesh 协议 |
+| `numeric_extract` | 字段是带单位的文本，需 regex 抽数字 | 端口速率（`2× 2.5GbE` 抽 2.5）/ 安全认证（`CE/GS` 抽计数） |
+| `percentile` | 字段是连续值，按盘点内百分位映射 1-5 | 价格 / 覆盖面积 / 容量 / 功率 |
+
+例（router.yaml 节选）：
+
+```yaml
+viz:
+  radar:
+    enabled: true
+    grouping_field: category
+    min_per_group: 4
+    dims:
+      - key: generation
+        label: WiFi 代际
+        source: wifi_protocol
+        type: enum
+        scale: {"WiFi 5": 1, "WiFi 6": 2, "WiFi 6E": 3, "WiFi 7 dual": 4, "WiFi 7 tri": 5}
+      - key: port_speed
+        label: 端口速率
+        source: wan_lan_ports
+        type: numeric_extract
+        pattern: '(\d+(?:\.\d+)?)\s*GbE'
+        aggregate: max
+        scale: {"1": 2, "2.5": 4, "5": 5, "10": 5}
+      - key: value
+        label: 性价比
+        source: typical_price_eur
+        type: percentile
+        direction: descending     # 价格低高分
+        bins: 5
+      # ... 其余 3 维
+```
 
 ---
 

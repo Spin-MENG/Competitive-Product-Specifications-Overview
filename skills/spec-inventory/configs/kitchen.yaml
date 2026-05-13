@@ -56,13 +56,62 @@ viz:
     y: typical_price_eur
     series_by: subcategory
   radar:
+    enabled: true
+    grouping_field: subcategory   # 按子品类分组（每个子类一张图：空气炸锅 / 料理机 / ...）
+    min_per_group: 4
+    title_template: "{N} 款 {group_name} · 六维度雷达对比"
     dims:
-      - capacity
-      - power
-      - smart_score
-      - safety_cert_count
-      - value
-      - noise_inverse        # 噪音倒序，越静音分越高
+      - key: capacity
+        label: 容量
+        source: capacity_liter
+        type: percentile
+        direction: ascending      # 大容量高分
+        bins: 5
+
+      - key: power
+        label: 功率
+        source: power_w
+        type: percentile
+        direction: ascending      # 高功率通常等于性能（厨具领域；若是 SaaS / 节能产品方向相反）
+        bins: 5
+
+      - key: smart_score
+        label: 智能化
+        source: control_type
+        type: enum
+        scale:
+          "voice": 5
+          "app": 4
+          "touch": 3
+          "mechanical": 1
+        default: 1
+
+      - key: safety_cert_count
+        label: 安全认证
+        source: safety_cert
+        type: numeric_extract
+        pattern: '\b(CE|GS|TÜV|FCC|UL|RoHS)\b'   # 抽认证标识，计数
+        aggregate: count
+        scale:
+          "1": 2
+          "2": 3
+          "3": 4
+          "4": 5
+        default: 1
+
+      - key: value
+        label: 性价比
+        source: typical_price_eur
+        type: percentile
+        direction: descending     # 价格低高分
+        bins: 5
+
+      - key: noise_inverse
+        label: 静音度
+        source: noise_db
+        type: percentile
+        direction: descending     # dB 低高分（越静音越好）
+        bins: 5
 
 # ─── Top N 候选扩展 hints ───
 candidate_hints:

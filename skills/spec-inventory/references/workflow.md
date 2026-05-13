@@ -168,6 +168,129 @@ CSV 4 个 + 目标 12 个 → 需补 8 个。
 
 ---
 
+---
+
+## Step 5.5 · 雷达评分计算（schema-driven，按 YAML 配置）
+
+这一步把 CSV 里的原始字段值（如 "WiFi 7 / BE3600"、"2× 2.5GbE"、"~604㎡"、"210-230"）按 YAML `viz.radar.dims` 的规则映射到 **0-5 整数分**，注入 brief。每个产品最终得到一个 6-tuple（或 N-tuple，dim 数由 YAML 定）。
+
+### 5.5.1 读 schema
+
+```python
+schema = yaml.load("configs/<category>.yaml")
+if not schema.get("viz", {}).get("radar", {}).get("enabled", False):
+    SKIP 5.5  # 该品类未启用雷达
+    
+dims    = schema["viz"]["radar"]["dims"]            # list of 6 dim configs
+grouper = schema["viz"]["radar"]["grouping_field"]  # 如 'category' / 'subcategory'
+min_per_group = schema["viz"]["radar"].get("min_per_group", 4)
+```
+
+### 5.5.2 对每个产品 × 每个 dim 算分
+
+按 `dim.type` 分 3 类规则：
+
+#### type=`enum` — 离散映射
+
+```python
+def score_enum(dim, product):
+    value = product[dim["source"]]               # 如 product["wifi_protocol"] = "WiFi 7 BE3600"
+    scale = dim["scale"]
+    match_mode = dim.get("match_mode", "exact")  # exact / contains
+    if match_mode == "exact":
+        return scale.get(value, dim.get("default", 1))
+    else:  # contains
+        for key, score in scale.items():
+            if key.lower() in value.lower():
+                return score
+        return dim.get("default", 1)
+```
+
+#### type=`numeric_extract` — regex 抽数字 + scale
+
+```python
+import re
+def score_numeric(dim, product):
+    text = product[dim["source"]]                # 如 "2× 2.5GbE WAN/LAN + 2× 1GbE LAN"
+    matches = re.findall(dim["pattern"], text)
+    if not matches:
+        return dim.get("default", 1)
+    nums = [float(m) for m in matches]
+    agg = dim.get("aggregate", "max")            # max / min / count / sum
+    val = {"max": max, "min": min, "count": len, "sum": sum}[agg](nums)
+    return dim["scale"].get(str(val), dim.get("default", 1))
+```
+
+#### type=`percentile` — 盘点内百分位映射 1-5
+
+```python
+def score_percentile(dim, all_products, this_product, bins=5):
+    source = dim["source"]
+    values = []
+    for p in all_products:
+        v = extract_numeric(p[source])           # 处理 "210-230" 取中位数、"~604㎡" 抽 604
+        if v is not None: values.append(v)
+    if not values: return 1
+    my_val = extract_numeric(this_product[source])
+    if my_val is None: return 1
+    rank = sum(1 for v in values if v <= my_val) / len(values)  # 0-1 百分位
+    if dim["direction"] == "descending":
+        rank = 1 - rank                          # 反向（如价格越低分越高）
+    return min(bins, max(1, int(rank * bins) + 1))
+```
+
+#### 通用 helper · `extract_numeric`
+
+```python
+def extract_numeric(s):
+    """从 '210-230' / '~604㎡' / '512 / 128 MB' 中抽出代表性数字"""
+    if not s or s == "未公开": return None
+    # 区间 "a-b" → 中位数
+    m = re.match(r'~?(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)', s)
+    if m: return (float(m.group(1)) + float(m.group(2))) / 2
+    # 第一个浮点数
+    m = re.search(r'(\d+\.?\d*)', s)
+    return float(m.group(1)) if m else None
+```
+
+### 5.5.3 按 grouping_field 分组
+
+```python
+groups = {}
+for p in all_products:
+    g = p[grouper]                               # 如 product["category"] = "mesh_bundle"
+    groups.setdefault(g, []).append(p)
+
+# 过滤：单组 < min_per_group 的不画雷达
+groups = {g: ps for g, ps in groups.items() if len(ps) >= min_per_group}
+```
+
+### 5.5.4 注入 brief
+
+```yaml
+brief.sections.pricing_matrix.radar:
+  enabled: true
+  dim_labels: ["WiFi 代际", "频段数", "端口速率", "覆盖面积", "性价比", "生态开放度"]
+  charts:
+    - group_name: "Mesh 套装"
+      products:
+        - { name: "TP-Link Deco BE25", scores: [4,3,4,5,5,2] }
+        - { name: "TP-Link Deco BE3600", scores: [4,3,2,5,5,2] }
+        - ...
+    - group_name: "Repeater"
+      products:
+        - { name: "AVM FRITZ!Repeater 6000", scores: [2,4,4,3,3,1] }
+        - ...
+```
+
+### 5.5.5 anchor isolation 在雷达图的强制规则
+
+**新品的雷达 N-tuple 必须满足**：N 个 dim 中**至少 N-1 个**的 `source` 字段在 `anchor_explicit` 里（即只允许 1 个维度从分析师推论）。否则**不画新品雷达系列**——HTML 模板只渲染竞品系列。
+
+例：MeshNode 项目中 `anchor_explicit` 只有 `typical_price_eur`（只覆盖 "性价比" 1 维），其余 5 维落在 `anchor_open` → 不画 MeshNode 雷达，章节下方注明原因。
+
+---
+
 ## Step 6 · 委托 html-report skill 生成 HTML 报告
 
 **核心原则**：本 plugin **不自维护** HTML 模板，统一委托给 `data-team-skills:html-report` skill。这样模板升级、配色调整、组件扩展由 html-report skill owner 集中维护，本 plugin 自动受益。

@@ -65,13 +65,84 @@ viz:
     y: typical_price_eur
     series_by: category         # 分 Mesh / Repeater 两组
   radar:
+    enabled: true
+    grouping_field: category    # 按 category 分组，每组一张雷达图（mesh_bundle / repeater）
+    min_per_group: 4            # 单组少于此数量则该组不画雷达（信息密度不够）
+    title_template: "{N} 款 {group_name} · 六维度雷达对比"
     dims:
-      - generation              # WiFi 代际评分
-      - bands                   # 频段数（dual=3 / tri=5 / tri+6GHz=5）
-      - port_speed              # 最大端口速率
-      - coverage                # 3-pack 覆盖面积归一化
-      - value                   # 性价比（价格倒序）
-      - openness                # 生态开放度（EasyMesh=5 / 部分=3 / 纯私有=1）
+      # ─── 每个 dim 必填：key / label / source / type ───
+      # type 取值：enum（枚举映射）/ numeric_extract（regex 抽数字 + scale）/ percentile（盘点内百分位 1-5）
+      - key: generation
+        label: WiFi 代际
+        source: wifi_protocol
+        type: enum
+        scale:
+          "WiFi 5": 1
+          "WiFi 6": 2
+          "WiFi 6E": 3
+          "WiFi 7 dual": 4       # 含 dual-band 7 (2.4+5)
+          "WiFi 7 tri": 5        # 含 6 GHz tri-band
+        default: 1
+
+      - key: bands
+        label: 频段数
+        source: band_config
+        type: enum
+        scale:
+          "dual-band": 3
+          "dual + Powerline": 3
+          "tri-band (no 6GHz)": 4   # 含 2.4 + 5 + 5
+          "tri-band (with 6GHz)": 5 # 含 6 GHz
+        default: 3
+
+      - key: port_speed
+        label: 端口速率
+        source: wan_lan_ports
+        type: numeric_extract
+        pattern: '(\d+(?:\.\d+)?)\s*GbE'   # 抽出最大 Gbps 数字
+        aggregate: max
+        scale:                              # 抽到的数字按区间映射
+          "1": 2
+          "2.5": 4
+          "5": 5
+          "10": 5
+        default: 2
+
+      - key: coverage
+        label: 覆盖面积
+        source: coverage_sqm_3pack
+        type: percentile
+        direction: ascending      # 大值高分
+        bins: 5
+
+      - key: value
+        label: 性价比
+        source: typical_price_eur
+        type: percentile
+        direction: descending     # 小值高分（性价比高）
+        bins: 5
+        notes: 价格列若是"min-max"区间，取中位数计算
+
+      - key: openness
+        label: 生态开放度
+        source: mesh_protocol
+        type: enum
+        scale:
+          "EasyMesh": 5
+          "EasyMesh R2": 4
+          "AiMesh + EasyMesh R2": 3
+          "OneMesh": 2
+          "AI-Driven Mesh": 2
+          "Orbi Mesh": 2
+          "TrueMesh": 2
+          "Intelligent Mesh": 2
+          "Nest Mesh": 2
+          "AVM Mesh": 1
+          "Devolo Mesh": 1
+          "Smart Connect": 1
+          "vendor-proprietary": 1
+        default: 1
+        match_mode: contains      # 字段值含上述子串即匹配（避免 "AI-Driven Mesh + 802.11k/v/r" 这种长串失配）
 
 # ─── Top N 候选扩展 hints ───
 # 当 CSV 不够 Top N 时，按品牌阵营 + 形态多样性扩展

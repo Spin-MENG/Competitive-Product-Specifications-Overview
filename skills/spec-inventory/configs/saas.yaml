@@ -50,6 +50,79 @@ viz:
     x: integrations_count
     y: starting_price_usd
     series_by: subcategory
+  radar:
+    enabled: true
+    grouping_field: subcategory
+    min_per_group: 4
+    title_template: "{N} 款 {group_name} · 六维度雷达对比"
+    dims:
+      - key: integrations
+        label: 集成生态
+        source: integrations_count
+        type: percentile
+        direction: ascending
+        bins: 5
+
+      - key: compliance
+        label: 合规深度
+        source: compliance
+        type: numeric_extract
+        pattern: '\b(SOC2|GDPR|HIPAA|ISO27001|FedRAMP|PCI-DSS)\b'
+        aggregate: count
+        scale:
+          "1": 1
+          "2": 2
+          "3": 3
+          "4": 4
+          "5": 5
+        default: 1
+
+      - key: api_richness
+        label: API 开放度
+        source: api_availability
+        type: enum
+        scale:
+          "REST + GraphQL + Webhook": 5
+          "GraphQL": 4
+          "REST + Webhook": 4
+          "REST": 3
+          "Webhook only": 2
+          "无": 1
+        default: 1
+        match_mode: contains
+
+      - key: auth_security
+        label: 认证安全
+        source: sso_support
+        type: enum
+        scale:
+          "SAML + OAuth + LDAP": 5
+          "SAML + OAuth": 4
+          "SAML": 3
+          "OAuth": 3
+          "LDAP": 2
+          "无": 1
+        default: 1
+        match_mode: contains
+
+      - key: value
+        label: 性价比
+        source: starting_price_usd
+        type: percentile
+        direction: descending     # 起步价越低越好
+        bins: 5
+
+      - key: deployment_flexibility
+        label: 部署灵活度
+        source: deployment_model
+        type: enum
+        scale:
+          "hybrid": 5
+          "cloud + on-prem": 5
+          "on-prem": 4
+          "cloud": 3
+        default: 3
+        match_mode: contains
 
 # ─── Top N 候选扩展 hints ───
 candidate_hints:
