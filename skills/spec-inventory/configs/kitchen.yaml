@@ -1,0 +1,80 @@
+# 厨具 / 小家电品类 schema（骨架示例）
+# 用例：空气炸锅 / 料理机 / 电饭煲 / 净水器 / 咖啡机 等
+
+category: kitchen
+display_name: 厨具 / 小家电
+price_unit: EUR
+price_basis: 单台
+market_default: EU 5 站点
+
+# ─── 必填字段 ───
+required_fields:
+  - brand
+  - model
+  - subcategory             # air_fryer / blender / rice_cooker / water_purifier / coffee_machine
+  - capacity_liter          # 容量（L）
+  - power_w                 # 额定功率（W）
+  - voltage                 # 电压制式（220V / 110V / 全球电压）
+  - control_type            # mechanical / touch / app / voice
+  - temp_range_c            # 温控范围（℃，若有）
+  - dimensions_mm           # 尺寸 W×D×H
+  - weight_kg
+  - safety_cert             # CE / GS / TÜV / FCC
+  - typical_price_eur
+
+# ─── 选填字段 ───
+optional_fields:
+  - motor_power_w           # 电机功率（料理机 / 食物处理机用）
+  - blade_material          # 刀片材质
+  - smart_features          # 智能功能（远程控制 / 食谱推送 / 定时 等）
+  - filter_stages           # 滤芯级数（净水器用）
+  - filter_life_liter       # 滤芯寿命（L）
+  - noise_db                # 噪音（dB）
+  - source_urls
+  - field_gaps
+
+# ─── 字段规范化模板 ───
+standardize:
+  capacity_liter: "<float> L"
+  power_w: "<int> W"
+  temp_range_c: "<min>-<max>°C"
+  dimensions_mm: "<W>×<D>×<H> mm"
+  typical_price_eur: "<min>-<max> EUR"
+
+# ─── 可视化建议 ───
+viz:
+  donut_charts:
+    - field: subcategory
+      title: 子品类分布
+    - field: control_type
+      title: 控制方式分布
+  bar_chart:
+    field: power_w
+    title: 功率分布
+  scatter:
+    x: capacity_liter
+    y: typical_price_eur
+    series_by: subcategory
+  radar:
+    dims:
+      - capacity
+      - power
+      - smart_score
+      - safety_cert_count
+      - value
+      - noise_inverse        # 噪音倒序，越静音分越高
+
+# ─── Top N 候选扩展 hints ───
+candidate_hints:
+  air_fryer:
+    - Philips Airfryer 系列
+    - Ninja Foodi 系列
+    - Cosori 系列
+  blender:
+    - Vitamix / Blendtec / Ninja
+  rice_cooker:
+    - Zojirushi / Tiger / Cuckoo
+  water_purifier:
+    - Brita / BWT / Philips
+  coffee_machine:
+    - De'Longhi / Jura / Philips

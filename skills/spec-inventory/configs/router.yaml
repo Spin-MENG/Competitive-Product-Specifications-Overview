@@ -1,0 +1,92 @@
+# Router / WiFi 设备品类 schema
+# 沉淀自 GL.iNet 数据组 MeshNode 项目（ticket #65）U12 工作单元
+# 覆盖：Mesh 套装 / Repeater / Range Extender / Powerline-hybrid
+
+category: router
+display_name: 路由器 / Mesh / Repeater
+price_unit: EUR
+price_basis: 3-pack 等效（Repeater 单台 × 3 简化对照）
+market_default: EU 5 站点
+
+# ─── 必填字段 ───
+required_fields:
+  - brand                  # 品牌：TP-Link / NETGEAR / ASUS / Linksys / Google / eero / AVM / Devolo / ...
+  - model                  # 型号：Deco BE25 / Orbi 370 / ZenWiFi BT8 / ...
+  - category               # mesh_bundle / repeater
+  - wifi_protocol          # WiFi 5 / 6 / 6E / 7
+  - phy_rate               # BE3600 / AXE5400 / AC2400 等厂商标称
+  - band_config            # dual-band (2.4+5) / tri-band (2.4+5+6) / tri-band (2.4+5+5) / dual + Powerline
+  - mlo_support            # Yes / No (WiFi 7 才有)
+  - mesh_protocol          # EasyMesh / vendor-proprietary (AiMesh / TrueMesh / Orbi Mesh / OneMesh / ...)
+  - wan_lan_ports          # 数量 + 速率，例 "2× 2.5GbE WAN/LAN auto"
+  - antenna                # 数量 + 内置/外置
+  - coverage_sqm_3pack     # 厂商标称 3-pack 覆盖面积（㎡）
+  - power_w                # 功耗（W）
+  - form_factor            # desktop puck / desktop tower / desktop egg / desktop slim 内置电源 / plug-in wall / ...
+  - typical_price_eur      # 3-pack 等效价格区间
+
+# ─── 选填字段 ───
+optional_fields:
+  - usb_ports              # USB 类型 + 数量；无写 None
+  - chipset_soc            # SoC 型号：Qualcomm IPQ5312 / MediaTek MT7988 / Broadcom BCM6755 / ...
+  - ram_mb                 # MB
+  - flash_mb               # MB
+  - max_nodes              # 厂商建议最大组网节点
+  - single_or_bundle       # 主流售卖形态
+  - powerline_protocol     # G.hn / HomePlug AV2（Powerline-hybrid 才填）
+  - powerline_phy_rate     # Mbps
+  - thread_matter          # Thread border / Matter hub 是否支持
+  - source_urls            # 关键资料来源 URL 列表
+  - field_gaps             # 未公开字段说明
+
+# ─── 字段规范化模板 ───
+standardize:
+  chipset_soc: "Vendor Model @ClockGHz"     # 例 "Qualcomm IPQ5312 @1.1GHz"
+  ram_mb: "<int>"                            # 例 "512"
+  flash_mb: "<int>"                          # 例 "128"
+  coverage_sqm_3pack: "~<int>㎡ (3-pack)"
+  power_w: "<int> W"                         # 例 "23 W"
+  typical_price_eur: "<min>-<max> EUR"       # 例 "210-230"
+
+# ─── 可视化建议 ───
+viz:
+  donut_charts:
+    - field: wifi_protocol      # 协议代际分布 donut
+      title: WiFi 协议代际分布
+    - field: form_factor        # 形态分布 donut
+      title: 产品形态分布
+    - field: chipset_vendor     # 从 chipset_soc 提取 Vendor
+      title: Chipset 阵营
+  bar_chart:
+    field: band_config_summary  # 频段配置汇总（含 6 GHz tri / 无 6 GHz tri / dual / dual+PLC）
+    title: 频段配置分布
+  scatter:
+    x: wifi_protocol_score      # 1=WiFi5 / 2=WiFi6 / 3=WiFi6E / 4=WiFi7 dual / 5=WiFi7 tri
+    y: typical_price_eur
+    series_by: category         # 分 Mesh / Repeater 两组
+  radar:
+    dims:
+      - generation              # WiFi 代际评分
+      - bands                   # 频段数（dual=3 / tri=5 / tri+6GHz=5）
+      - port_speed              # 最大端口速率
+      - coverage                # 3-pack 覆盖面积归一化
+      - value                   # 性价比（价格倒序）
+      - openness                # 生态开放度（EasyMesh=5 / 部分=3 / 纯私有=1）
+
+# ─── Top N 候选扩展 hints ───
+# 当 CSV 不够 Top N 时，按品牌阵营 + 形态多样性扩展
+candidate_hints:
+  mesh_bundle:
+    - TP-Link Deco 系列（BE25 / BE3600 / X50 / X60 等）
+    - NETGEAR Orbi 系列（770 / 870 / 970 / 370）
+    - Amazon eero 系列（eero 6 / 7 / Pro 7 / Max 7）
+    - ASUS ZenWiFi 系列（BT8 / BD4 / XT12）
+    - Linksys Velop 系列（Pro 7 / Pro 6E）
+    - Google Nest Wifi Pro
+    - Xiaomi BE3600 / BE7000
+  repeater:
+    - TP-Link RE 系列（RE815XE / RE715X / RE600X）
+    - AVM FRITZ!Repeater 系列（6000 / 3000 / 2400 / 1200 AX）
+    - NETGEAR EAX 系列（EAX15 / EAX12 / EAX80 EOL）
+    - Devolo Mesh WiFi 2 / Magic 2 WiFi 6（含 Powerline）
+    - D-Link DAP 系列

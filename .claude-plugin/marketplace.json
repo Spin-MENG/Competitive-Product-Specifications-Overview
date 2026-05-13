@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "competitive-product-specs",
+  "owner": {
+    "name": "Spin-MENG"
+  },
+  "metadata": {
+    "description": "竞品规格盘点流水线 Claude Code skill —— 从 CSV 锚定 / 候选扩 Top N / 并行 agent 拉规格 / 黄昏绮景 HTML 落地，硬性区分 ticket 明示项 vs 待探讨项",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "competitive-product-specs",
+      "description": "为产品立项 / 竞争分析做"Top N 竞品硬件规格盘点"。通过 slash command `/spec-inventory` 触发；schema 按品类 YAML 配置（路由 / 厨具 / SaaS / 自定义），并行 web research agent，输出 CSV + 黄昏绮景配色 HTML 报告。",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/spec-inventory"
+      ]
+    }
+  ]
+}

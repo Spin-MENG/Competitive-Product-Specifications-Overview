@@ -1,0 +1,63 @@
+# SaaS / B2B 软件品类 schema（骨架示例）
+# 用例：CRM / 数据分析 / 团队协作 / 客服系统 等
+
+category: saas
+display_name: SaaS / B2B 软件
+price_unit: USD
+price_basis: 月费 / 用户起步价（Pro 档）
+market_default: 全球
+
+# ─── 必填字段 ───
+required_fields:
+  - brand                   # 厂商
+  - product_name
+  - subcategory             # crm / analytics / collaboration / support / ...
+  - deployment_model        # cloud / on-prem / hybrid
+  - pricing_tiers           # Free / Pro / Business / Enterprise 各档价格
+  - starting_price_usd      # 起步价
+  - api_availability        # REST / GraphQL / Webhook / 无
+  - sso_support             # SAML / OAuth / LDAP / 无
+  - data_residency          # US / EU / 多区域
+  - compliance              # SOC2 / GDPR / HIPAA / ISO27001
+
+# ─── 选填字段 ───
+optional_fields:
+  - founded_year
+  - active_users            # 公开披露的活跃用户数
+  - integrations_count      # 集成应用数
+  - mobile_apps             # iOS / Android / 无
+  - white_label             # 白标支持
+  - sla_uptime              # SLA 标称（99.9% / 99.95% / 99.99%）
+  - source_urls
+  - field_gaps
+
+# ─── 字段规范化模板 ───
+standardize:
+  starting_price_usd: "<int> USD/seat/month"
+  sla_uptime: "<float>%"
+
+# ─── 可视化建议 ───
+viz:
+  donut_charts:
+    - field: deployment_model
+      title: 部署模式分布
+    - field: subcategory
+      title: 子品类分布
+  bar_chart:
+    field: compliance_count   # 合规认证数量
+    title: 合规认证覆盖
+  scatter:
+    x: integrations_count
+    y: starting_price_usd
+    series_by: subcategory
+
+# ─── Top N 候选扩展 hints ───
+candidate_hints:
+  crm:
+    - Salesforce / HubSpot / Pipedrive / Zoho
+  analytics:
+    - Tableau / Power BI / Looker / Metabase
+  collaboration:
+    - Slack / Microsoft Teams / Notion / Asana
+  support:
+    - Zendesk / Intercom / Freshdesk / HelpScout
