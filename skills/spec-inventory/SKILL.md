@@ -96,6 +96,19 @@ viz:
 
 **anchor isolation 在雷达图强制规则**：新品 6 维中至少 5 维必须在 `anchor_explicit` 才允许画占位锚点；否则**不画新品雷达系列**（MeshNode 这次 6 维中只有"性价比"有 PPT 依据，故不画）。
 
+### Step 5.6 · 配置综合分 × 价格 性价比四象限 matrix（可选）
+
+`configs/<category>.yaml` 的 `viz.value_matrix.enabled: true` 时执行。把 Step 5.5 的雷达 N 维分数（排除 value 维避免循环）合成 composite x，与价格 y 组 2D 散点，按盘点中位数自动切 4 象限：
+
+| 象限 | 含义 |
+|---|---|
+| 右下 | ✓ 性价比甜点（高配低价） |
+| 右上 | ★ 高端旗舰（高配高价） |
+| 左上 | ⚠ 溢价警示（低配高价） |
+| 左下 | ○ 入门档（低配低价） |
+
+详见 [`references/workflow.md`](references/workflow.md) Step 5.6。**anchor isolation**：新品 x 来自 radar 合成 → 若任一非 value 维在 anchor_open，**只画 y 水平价格线，不画 x 散点**（MeshNode 这次就是这个情况）。
+
 ### Step 6 · 委托 html-report skill 生成 HTML 报告
 
 **不要在本 skill 内自己写 HTML 骨架**。把 Step 1-5 准备好的数据打包成 section brief，通过 `Skill` 工具调用 `data-team-skills:html-report`，让它用自己的 `assets/template.html` + 工厂函数 `C` / `tooltipStyle()` / `axisStyle()` / `lerpColor()` 渲染。

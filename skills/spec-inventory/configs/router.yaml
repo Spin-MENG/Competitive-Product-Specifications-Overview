@@ -64,6 +64,26 @@ viz:
     x: wifi_protocol_score      # 1=WiFi5 / 2=WiFi6 / 3=WiFi6E / 4=WiFi7 dual / 5=WiFi7 tri
     y: typical_price_eur
     series_by: category         # 分 Mesh / Repeater 两组
+  value_matrix:
+    enabled: true
+    # 配置综合分 × 价格 性价比四象限 matrix
+    x_axis:
+      label: 配置综合分 (1-5)
+      composite_of_radar_dims: true     # 用 viz.radar.dims 计算
+      exclude_dims: [value]              # 排除 value 维避免循环
+      normalize: divide_by_count         # 总和 / 维数 → 1-5 区间
+    y_axis:
+      source: typical_price_eur
+      label: 3-pack 等效价格 EUR
+      extract_method: median             # "210-230" → 中位数
+    quadrant_split:
+      method: median                     # x/y 均用盘点中位数
+      labels:                            # 4 象限语义命名
+        top_right: "★ 高端旗舰"
+        top_left:  "⚠ 溢价警示"
+        bottom_right: "✓ 性价比甜点"
+        bottom_left:  "○ 入门档"
+    series_by: category                  # 用形状区分 mesh_bundle (圆) / repeater (方)
   radar:
     enabled: true
     grouping_field: category    # 按 category 分组，每组一张雷达图（mesh_bundle / repeater）

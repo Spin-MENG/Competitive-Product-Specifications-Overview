@@ -55,6 +55,25 @@ viz:
     x: capacity_liter
     y: typical_price_eur
     series_by: subcategory
+  value_matrix:
+    enabled: true
+    x_axis:
+      label: 配置综合分 (1-5)
+      composite_of_radar_dims: true
+      exclude_dims: [value]
+      normalize: divide_by_count
+    y_axis:
+      source: typical_price_eur
+      label: 单台价格 EUR
+      extract_method: median
+    quadrant_split:
+      method: median
+      labels:
+        top_right: "★ 高端品质"
+        top_left:  "⚠ 溢价警示"
+        bottom_right: "✓ 性价比甜点"
+        bottom_left:  "○ 入门档"
+    series_by: subcategory
   radar:
     enabled: true
     grouping_field: subcategory   # 按子品类分组（每个子类一张图：空气炸锅 / 料理机 / ...）

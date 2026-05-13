@@ -291,6 +291,100 @@ brief.sections.pricing_matrix.radar:
 
 ---
 
+## Step 5.6 · 配置综合分 × 价格 四象限 matrix（可选 · YAML `viz.value_matrix.enabled` 启用）
+
+把 Step 5.5 的雷达 N 维分数（**排除 value 维**避免循环）合成一个"配置综合分"，与价格组成 2D 散点 + 4 象限切分。
+
+### 5.6.1 读 schema
+
+```yaml
+schema.viz.value_matrix:
+  enabled: true
+  x_axis:
+    composite_of_radar_dims: true
+    exclude_dims: [value]
+    normalize: divide_by_count    # 总和 / 维数
+  y_axis:
+    source: typical_price_eur
+    extract_method: median        # 区间字符串 "210-230" → 220
+  quadrant_split:
+    method: median                # x/y 均用盘点中位数
+    labels: {top_right: "...", ...}
+```
+
+### 5.6.2 计算每个产品的 composite x
+
+```python
+def composite_score(product, radar_dims, exclude=("value",)):
+    used_dims = [d for d in radar_dims if d["key"] not in exclude]
+    scores = [product["radar_scores"][d["key"]] for d in used_dims]  # 来自 Step 5.5
+    return sum(scores) / len(used_dims)   # 1-5 区间
+```
+
+### 5.6.3 抽 y（价格）
+
+价格列通常是 "210-230" / "~604" / "199-229 (EOL)" 等不规则文本：
+
+```python
+def extract_price_median(s):
+    m = re.match(r'~?(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)', s)
+    if m: return (float(m.group(1)) + float(m.group(2))) / 2
+    m = re.search(r'(\d+\.?\d*)', s)
+    return float(m.group(1)) if m else None
+```
+
+### 5.6.4 算中位数 + 切 4 象限
+
+```python
+xs = sorted([p["composite"] for p in products])
+ys = sorted([p["price_y"] for p in products])
+x_med = (xs[len(xs)//2-1] + xs[len(xs)//2]) / 2 if len(xs)%2==0 else xs[len(xs)//2]
+y_med = (ys[len(ys)//2-1] + ys[len(ys)//2]) / 2 if len(ys)%2==0 else ys[len(ys)//2]
+
+for p in products:
+    if p["composite"] >= x_med and p["price_y"] < y_med:
+        p["quadrant"] = "bottom_right"   # 性价比甜点
+    elif p["composite"] >= x_med and p["price_y"] >= y_med:
+        p["quadrant"] = "top_right"      # 高端旗舰
+    elif p["composite"] < x_med and p["price_y"] < y_med:
+        p["quadrant"] = "bottom_left"    # 入门档
+    else:
+        p["quadrant"] = "top_left"       # 溢价警示
+```
+
+### 5.6.5 注入 brief
+
+```yaml
+brief.sections.pricing_matrix.value_matrix:
+  enabled: true
+  x_label: "配置综合分 (1-5)"
+  y_label: "3-pack 等效价格 EUR"
+  x_median: 3.2
+  y_median: 417
+  quadrant_labels: { top_right: "★ 高端旗舰", ... }
+  points:
+    - { name: "TP-Link Deco BE25", x: 3.6, y: 220, quadrant: "bottom_right", category: "mesh" }
+    - ...
+  anchor:                              # 新品锚点 · 遵守 anchor isolation
+    name: "MeshNode"
+    y: 225                             # PPT 明示 → 画 y 水平线
+    x: null                            # PPT 待探讨 → 不画 x 点
+```
+
+### 5.6.6 anchor isolation 在 value_matrix 的规则
+
+- **x 来自 composite of radar dims** → 如果任一 radar 维度落在 `anchor_open`，整个 x 不可信
+- 因此新品**只有同时满足"价格明示 + 所有 5 个非 value 维都明示"**才画完整散点
+- 否则：画一条 **y 价格水平线**（如本次 MeshNode），不画 x 散点
+
+### 5.6.7 HTML 渲染要点（委托给 html-report 时透传）
+
+- 4 象限用 `markArea` 上色（C.tealMid 右下 / C.tealDeep 右上 / C.orange 左上 / C.sage 左下，opacity 0.06）
+- 用 `markLine` 画 x/y 中位线（C.coral dashed）
+- 用第三个 invisible series 在象限中心放语义标签（"✓ 性价比甜点" 等）
+
+---
+
 ## Step 6 · 委托 html-report skill 生成 HTML 报告
 
 **核心原则**：本 plugin **不自维护** HTML 模板，统一委托给 `data-team-skills:html-report` skill。这样模板升级、配色调整、组件扩展由 html-report skill owner 集中维护，本 plugin 自动受益。
